@@ -1,6 +1,10 @@
 # Repo Assistant AI
 
-A GitHub App built with [Probot](https://github.com/probot/probot) that uses [OpenAI](https://openai.com/) to help you check if any issue is similar or a duplicate of another issue. As I have been working on Open Source project I have found that there are many issues that are similar to each other and I have to manually check if they are similar or not. So I decided to build this app to help me with that. With the help of OpenAI's and Supabase's API I was able to build this app. More features will be added as I go along like PR's checking if they are similar or not, and more. Hope you enjoy it.
+A GitHub App built with [Probot](https://github.com/probot/probot) that uses [OpenAI](https://openai.com/) to help you check if any issue is similar or a duplicate of another issue. As I have been working on Open Source project I have found that there are many issues that are similar to each other and I have to manually check if they are similar or not. So I decided to build this app to help me with that. With the help of OpenAI's and Supabase's API I was able to build this app. 
+
+Right now this is just a blueprint and the bot works on a single repo with my own data, in the future I will plan to deploy it to a server and make it work on any repo. but be sure that if you want to use it you will need to create a supabase account and an openai account. and then run it on your own.
+
+More features will be added as I go along like PR's checking if they are similar or not, and more. Hope you enjoy it.
 
 
 
