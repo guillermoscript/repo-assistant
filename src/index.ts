@@ -82,7 +82,7 @@ export = (app: Probot) => {
     if (potentialDuplicate) {
 
       const withoutTheCurrentIssue = topFiveMatches.filter((match) => match.metadata.issue_id !== issueId)
-      const systemPrompt = `Given the following sections from a github issues, answer if the new issue is duplicate or not, if the issue is duplicate add the issue nuember and put the #to it, so github creates the link to, also please add a brief explanation on why this is a duplicate.
+      const systemPrompt = `Given the following sections from a github issues, answer if the new issue is duplicate or not, if the issue is duplicate or similar write the issue number with a # like this: "#IssueNumber", so github creates the link to it, also please add a brief explanation on why this is a duplicate.
     the output must be in markdown format (use github flavored markdown). If you are unsure and the answer is not explicitly written in the documentation, say "Im unsure the issue is duplicate or similar to any other issue, so I will leave it to the maintainer to decide"
     Context (this section are all the issues that are related to the current issue):
     ---
