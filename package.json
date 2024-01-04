@@ -17,6 +17,8 @@
     "test": "jest"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.39.2",
+    "openai": "^4.24.1",
     "probot": "^12.2.4"
   },
   "devDependencies": {
