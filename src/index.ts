@@ -110,7 +110,7 @@ export = (app: Probot) => {
           { "role": "system", "content": systemPrompt },
           { "role": "user", "content": `Is this issue a duplicate or not? ${currentIssue}` }
         ],
-        model: "gpt-4-1106-preview",
+        model: botConfig.gptModel,
       });
 
 
