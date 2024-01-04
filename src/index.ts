@@ -2,6 +2,7 @@ import { Probot } from "probot";
 import { OpenAI } from 'openai'
 import { createClient } from '@supabase/supabase-js'
 import { createEmbeddingsAndSaveToDatabase } from "./insert";
+import { botConfig } from "./config";
 
 const supabaseUrl = process.env.SUPABASE_URL
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY
@@ -19,27 +20,9 @@ type SuccesRpcResponse = {
   similarity: number
 }
 
-// // Assuming you have a function to get the labels from the current issue
-// async function getIssueLabels(context: any): Promise<string[]> {
-//   // Replace this with the actual logic to get labels from the issue
-//   // For example, you might fetch them from the issue context or the GitHub API
-//   return context.payload.issue.labels.map((label: { name: string }) => label.name);
-// }
-
-async function addLabels(context: any, labels: string[]) {
-  try {
-    await context.octokit.issues.addLabels({
-      owner: context.payload.repository.owner.login,
-      repo: context.payload.repository.name,
-      issue_number: context.payload.issue.number,
-      labels: labels
-    });
-
-    return true;
-  } catch (error) {
-    console.error(error);
-    return false;
-  }
+async function createComment(context: any, body: string) {
+  const issueComment = context.issue({ body });
+  await context.octokit.issues.createComment(issueComment);
 }
 
 const supabaseClient = createClient(supabaseUrl, supabaseAnonKey)
@@ -64,16 +47,14 @@ export = (app: Probot) => {
       model: 'text-embedding-ada-002'
     })
     const embeddingText = embedding.data[0].embedding as number[]
-    // Define a similarity threshold
-    const SIMILARITY_THRESHOLD = 0.81; // Adjust this value based on testing
-
+    
     const { data, error } = await supabaseClient.rpc('match_documents', {
       query_embedding: embeddingText,
       filter: {
         // Add any additional filters here if needed
         repo_id: repoId,
       },
-      match_threshold: SIMILARITY_THRESHOLD,
+      match_threshold: botConfig.similarityThreshold,
     });
 
     if (error) {
@@ -87,13 +68,15 @@ export = (app: Probot) => {
       return;
     }
 
-    const dataType = data as SuccesRpcResponse[]
-    const topFiveMatches = dataType.sort((a, b) => b.similarity - a.similarity).slice(0, 5)
-    console.log(topFiveMatches, 'topFiveMatches')
+    const rpcResponses = data as SuccesRpcResponse[]
+    const topFiveMatches = rpcResponses.sort((a, b) => b.similarity - a.similarity).slice(0, 5)
+    
+    function isPotentialDuplicate(matches: SuccesRpcResponse[], issueId: number, threshold: number): boolean {
+      const withoutCurrentIssue = matches.filter((match) => match.metadata.issue_id !== issueId);
+      return withoutCurrentIssue.length > 0 && withoutCurrentIssue[0].similarity > threshold;
+    }
     // Check if the top match is above the similarity threshold
-    const potentialDuplicate = topFiveMatches.length > 0 && topFiveMatches[0].similarity > SIMILARITY_THRESHOLD;
-
-    let issueCommentBody = "";
+    const potentialDuplicate = isPotentialDuplicate(topFiveMatches, issueId, botConfig.similarityThreshold);
 
     // Construct the comment based on whether a duplicate is found
     if (potentialDuplicate) {
@@ -134,29 +117,9 @@ export = (app: Probot) => {
       const answer = completion.choices[0]
       console.log(answer, 'answer')
 
-
-      // // Add the duplicate label to the issue
-      // await context.octokit.issues.addLabels({
-      //   owner: context.payload.repository.owner.login,
-      //   repo: context.payload.repository.name,
-      //   issue_number: context.payload.issue.number,
-      //   labels: ['duplicate']
-      // });
-
-
-      // Create the comment on the issue
-      const issueComment = context.issue({
-        body: "AI response: " + answer.message.content
-      });
-
-      await context.octokit.issues.createComment(issueComment);
+      await createComment(context, "AI response: " + answer.message.content);
     } else {
-      issueCommentBody = "Thanks for opening this issue! A maintainer will look into this shortly.";
-      // Create the comment on the issue
-      const issueComment = context.issue({
-        body: issueCommentBody
-      });
-      await context.octokit.issues.createComment(issueComment);
+      await createComment(context, "Thanks for opening this issue! A maintainer will look into this shortly.");
     }
   });
   // For more information on building apps:
