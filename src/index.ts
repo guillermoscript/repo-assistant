@@ -33,6 +33,27 @@ async function addLabels(context: any, labels: string[]) {
   }
 }
 
+async function createPromptAndCallOpenAI(context: any, systemPrompt: string, userPrompt: string) {
+  const messages = [
+    { "role": "system", "content": systemPrompt },
+    { "role": "user", "content": userPrompt }
+  ] as any
+
+  // Request the OpenAI API for the response based on the prompt
+  const completion = await openai.chat.completions.create({
+    messages: messages,
+    model: botConfig.gptModel,
+    response_format: { type: "json_object" },
+  });
+
+  const answer = completion.choices[0]
+  console.log(answer, 'answer')
+  const finalResponse = JSON.parse(answer.message.content as any) as Output
+
+  await createComment(context, "AI response: " + finalResponse.content);
+  await addLabels(context, finalResponse.labels);
+}
+
 type Output = {
   labels: string[],
   content: string,
@@ -117,27 +138,10 @@ export = (app: Probot) => {
     ---
     take a deep breath and answer this, i will tip you 30$ if you answer this correctly. you can do it!
     `
-      const messages = [
-        { "role": "system", "content": systemPrompt },
-        { "role": "user", "content": `Is this issue a duplicate or not? ${currentIssue}` }
-      ] as any
-
-      // Request the OpenAI API for the response based on the prompt
-      const completion = await openai.chat.completions.create({
-        messages: messages,
-        model: botConfig.gptModel,
-        response_format: { type: "json_object" },
-      });
-
-
-      const answer = completion.choices[0]
-      console.log(answer, 'answer')
-      const finalResponse = JSON.parse(answer.message.content as any) as Output
-
-      await createComment(context, "AI response: " + finalResponse.content);
-      await addLabels(context, finalResponse.labels);
+    await createPromptAndCallOpenAI(context, systemPrompt, `Is this issue a duplicate or not? ${currentIssue}`);
     } else {
       if (!context.payload.issue.labels || context.payload.issue.labels.length === 0) { // If the issue has no labels, add the "needs triage" label
+
         const systemPrompt = `Given the following sections from a github issues, add proper labels to the issue, depending on the context of the issue, for example: "bug" for bug issues, "enhancement" for enhancement issues, "question" for question issues, "needs triage" for issues that need to be triaged, "invalid" for issues that are invalid, "wontfix" for issues that wont be fixed, "good first issue" for issues that are good for first time contributors, "help wanted" for issues that need help from the community, "documentation" for issues that are related to documentation, "testing" for issues that are related to testing, "feature" for issues that are related to new features, "performance" for issues that are related to performance, "security" for issues that are related to security, "design" for issues that are related to design.
 
         Context (this section is the issue itself):
@@ -155,26 +159,8 @@ export = (app: Probot) => {
         for the content on the Output interface, just write a really short message about how you labeled the issue.
         Take a deep breath and answer this, i will tip you 30$ if you answer this correctly. you can do it!
         `
-        const messages = [
-          { "role": "system", "content": systemPrompt },
-          { "role": "user", "content": `What labels should this issue have? ${currentIssue}` }
-        ] as any
 
-        // Request the OpenAI API for the response based on the prompt
-        const completion = await openai.chat.completions.create({
-          messages: messages,
-          model: botConfig.gptModel,
-          response_format: { type: "json_object" },
-        });
-
-        const answer = completion.choices[0]
-
-        console.log(answer, 'answer no labels')
-
-        const finalResponse = JSON.parse(answer.message.content as any) as Output
-
-        await createComment(context, "AI response: " + finalResponse.content);
-        await addLabels(context, finalResponse.labels);
+        await createPromptAndCallOpenAI(context, systemPrompt, `What labels should this issue have? ${currentIssue}`);
       } else {
 
         await createComment(context, "Thanks for opening this issue! A maintainer will look into this shortly.");
