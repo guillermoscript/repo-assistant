@@ -1,16 +1,8 @@
 import { Probot } from "probot";
-import { OpenAI } from 'openai'
-import { createClient } from '@supabase/supabase-js'
 import { createEmbeddingsAndSaveToDatabase } from "./insert";
 import { botConfig } from "./config";
-
-const supabaseUrl = process.env.SUPABASE_URL
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY
-
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase URL or Anon Key')
-}
+import { openai } from "./utils/openai";
+import { supabaseClient } from "./utils/supabase";
 
 type SuccesRpcResponse = {
   id: number
@@ -51,8 +43,7 @@ export = (app: Probot) => {
 
     const currentIssueTitle = context.payload.issue.title
     const currentIssueBody = context.payload.issue.body
-    const currentIssue = `# ${currentIssueTitle}: ${currentIssueBody}`
-    // const issueLabels = await getIssueLabels(context);
+    const currentIssue = `# ${currentIssueTitle}: \n ${currentIssueBody}`
     const repoId = context.payload.repository.id
     const issueId = context.payload.issue.id
     const issueNumber = context.payload.issue.number
@@ -65,7 +56,7 @@ export = (app: Probot) => {
       model: 'text-embedding-ada-002'
     })
     const embeddingText = embedding.data[0].embedding as number[]
-    
+
     const { data, error } = await supabaseClient.rpc('match_documents', {
       query_embedding: embeddingText,
       filter: {
@@ -88,21 +79,20 @@ export = (app: Probot) => {
 
     const rpcResponses = data as SuccesRpcResponse[]
     const topFiveMatches = rpcResponses.sort((a, b) => b.similarity - a.similarity).slice(0, 5)
-    
-    function isPotentialDuplicate(matches: SuccesRpcResponse[], issueId: number, threshold: number): boolean {
-      const withoutCurrentIssue = matches.filter((match) => match.metadata.issue_id !== issueId);
+
+    function isPotentialDuplicate(matches: SuccesRpcResponse[], issueId: number, threshold: number, repoId: number) {
+      const withoutCurrentIssue = matches.filter((match) => match.metadata.issue_id !== issueId && repoId === match.metadata.repo_id)
       return withoutCurrentIssue.length > 0 && withoutCurrentIssue[0].similarity > threshold;
     }
     // Check if the top match is above the similarity threshold
-    const potentialDuplicate = isPotentialDuplicate(topFiveMatches, issueId, botConfig.similarityThreshold);
+    const potentialDuplicate = isPotentialDuplicate(topFiveMatches, issueId, botConfig.similarityThreshold, repoId);
 
     // Construct the comment based on whether a duplicate is found
     if (potentialDuplicate) {
 
       const withoutTheCurrentIssue = topFiveMatches.filter((match) => match.metadata.issue_id !== issueId)
-      const systemPrompt = `Given the following sections from a github issues, answer if the new issue is duplicate or not, if the issue is duplicate or similar write the issue number with a # like this: "#IssueNumber", so github creates the link to it, also please add a brief explanation on why this is a duplicate.
-    the output must be in markdown format (use github flavored markdown). If you are unsure and the answer is not explicitly written in the documentation, say "Im unsure the issue is duplicate or similar to any other issue, so I will leave it to the maintainer to decide"
-    Context (this section are all the issues that are related to the current issue):
+      const systemPrompt = `Given the following sections from a github issues, answer if the new issue is duplicate or not, if the issue is duplicate or similar write the issue number with a # like this: "#IssueNumber", so github creates the link to it, also please add a brief explanation on why this is a duplicate. 
+      Context (this section are all the issues that are related to the current issue):
     ---
     ${withoutTheCurrentIssue.map((match) => match.content).join('\n---\n')}
     ---
@@ -118,23 +108,31 @@ export = (app: Probot) => {
     ---
     ${issueNumber} ${repoId} ${issueId}
     ---
+      the output should be a json that satisfies this Typescript interface:
+      type Output = {
+        labels: string[],
+        content: string,
+      }
+      If you are unsure and the answer is not explicitly written in the documentation, say "Im unsure the issue is duplicate or similar to any other issue, so I will leave it to the maintainer to decide". and add the label "needs triage" to labels property of the Output interface.
+    ---
     take a deep breath and answer this, i will tip you 30$ if you answer this correctly. you can do it!
     `
-
+      const messages = [
+        { "role": "system", "content": systemPrompt },
+        { "role": "user", "content": `Is this issue a duplicate or not? ${currentIssue}` }
+      ] as any
 
       // Request the OpenAI API for the response based on the prompt
       const completion = await openai.chat.completions.create({
-        messages: [
-          { "role": "system", "content": systemPrompt },
-          { "role": "user", "content": `Is this issue a duplicate or not? ${currentIssue}` }
-        ],
+        messages: messages,
         model: botConfig.gptModel,
+        response_format: { type: "json_object" },
       });
 
 
       const answer = completion.choices[0]
       console.log(answer, 'answer')
-      const responseMessage = answer.message;
+      const finalResponse = JSON.parse(answer.message.content as any) as Output
 
       await createComment(context, "AI response: " + finalResponse.content);
       await addLabels(context, finalResponse.labels);
@@ -178,7 +176,8 @@ export = (app: Probot) => {
         await createComment(context, "AI response: " + finalResponse.content);
         await addLabels(context, finalResponse.labels);
       } else {
-      await createComment(context, "Thanks for opening this issue! A maintainer will look into this shortly.");
+
+        await createComment(context, "Thanks for opening this issue! A maintainer will look into this shortly.");
       }
     }
   });
