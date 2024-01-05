@@ -1,13 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-import { OpenAI } from 'openai';
-
-// Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!;
-const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
-
-// Initialize OpenAI client
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+import { openai } from "./utils/openai";
+import { supabaseClient } from "./utils/supabase";
 
 // Function to split the text into chunks with a maximum number of tokens
 const MAX_TOKENS = 4000;
