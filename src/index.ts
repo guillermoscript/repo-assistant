@@ -25,8 +25,26 @@ async function createComment(context: any, body: string) {
   await context.octokit.issues.createComment(issueComment);
 }
 
-const supabaseClient = createClient(supabaseUrl, supabaseAnonKey)
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
+async function addLabels(context: any, labels: string[]) {
+  try {
+    await context.octokit.issues.addLabels({
+      owner: context.payload.repository.owner.login,
+      repo: context.payload.repository.name,
+      issue_number: context.payload.issue.number,
+      labels: labels
+    });
+
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
+type Output = {
+  labels: string[],
+  content: string,
+}
 
 export = (app: Probot) => {
   app.on("issues.opened", async (context) => {
