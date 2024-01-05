@@ -116,6 +116,40 @@ export = (app: Probot) => {
 
       const answer = completion.choices[0]
       console.log(answer, 'answer')
+      const responseMessage = answer.message;
+
+      // Step 2: check if the model wanted to call a function
+      const toolCalls = responseMessage.tool_calls;
+      console.log(toolCalls, 'toolCalls')
+      if (toolCalls) {
+        // Step 3: call the function
+        // Note: the JSON response may not always be valid; be sure to handle errors
+        const availableFunctions = {
+          add_labels_to_issue: async (labelsStr: string) => {
+            const labels = labelsStr.split(",");
+            await addLabels(context, labels);
+            console.log("Added labels to issue: " + labels.join(", "));
+          }
+        }; // only one function in this example, but you can have multiple
+        messages.push(responseMessage); // extend conversation with assistant's reply
+        for (const toolCall of toolCalls) {
+          const functionName = toolCall.function.name;
+          const functionToCall = availableFunctions[functionName as keyof typeof availableFunctions];
+          const functionArgs = JSON.parse(toolCall.function.arguments);
+          const functionResponse = await functionToCall(functionArgs);
+          messages.push({
+            tool_call_id: toolCall.id,
+            role: "tool",
+            name: functionName,
+            content: functionResponse,
+          }); // extend conversation with function response
+        }
+        const secondResponse = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo-1106",
+          messages: messages,
+        }); // get a new response from the model where it can see the function response
+        console.log(secondResponse.choices[0].message.content)
+      } else 
 
       await createComment(context, "AI response: " + answer.message.content);
     } else {
