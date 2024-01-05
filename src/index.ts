@@ -136,47 +136,50 @@ export = (app: Probot) => {
       console.log(answer, 'answer')
       const responseMessage = answer.message;
 
-      // Step 2: check if the model wanted to call a function
-      const toolCalls = responseMessage.tool_calls;
-      console.log(toolCalls, 'toolCalls')
-      if (toolCalls) {
-        // Step 3: call the function
-        // Note: the JSON response may not always be valid; be sure to handle errors
-        const availableFunctions = {
-          add_labels_to_issue: async (labelsStr: string) => {
-            const labels = labelsStr.split(",");
-            await addLabels(context, labels);
-            console.log("Added labels to issue: " + labels.join(", "));
-          }
-        }; // only one function in this example, but you can have multiple
-        messages.push(responseMessage); // extend conversation with assistant's reply
-        for (const toolCall of toolCalls) {
-          const functionName = toolCall.function.name;
-          const functionToCall = availableFunctions[functionName as keyof typeof availableFunctions];
-          const functionArgs = JSON.parse(toolCall.function.arguments);
-          const functionResponse = await functionToCall(functionArgs);
-          messages.push({
-            tool_call_id: toolCall.id,
-            role: "tool",
-            name: functionName,
-            content: functionResponse,
-          }); // extend conversation with function response
-        }
-        const secondResponse = await openai.chat.completions.create({
-          model: "gpt-3.5-turbo-1106",
-          messages: messages,
-        }); // get a new response from the model where it can see the function response
-        console.log(secondResponse.choices[0].message.content)
-      } else 
-
-      await createComment(context, "AI response: " + answer.message.content);
+      await createComment(context, "AI response: " + finalResponse.content);
+      await addLabels(context, finalResponse.labels);
     } else {
+      if (!context.payload.issue.labels || context.payload.issue.labels.length === 0) { // If the issue has no labels, add the "needs triage" label
+        const systemPrompt = `Given the following sections from a github issues, add proper labels to the issue, depending on the context of the issue, for example: "bug" for bug issues, "enhancement" for enhancement issues, "question" for question issues, "needs triage" for issues that need to be triaged, "invalid" for issues that are invalid, "wontfix" for issues that wont be fixed, "good first issue" for issues that are good for first time contributors, "help wanted" for issues that need help from the community, "documentation" for issues that are related to documentation, "testing" for issues that are related to testing, "feature" for issues that are related to new features, "performance" for issues that are related to performance, "security" for issues that are related to security, "design" for issues that are related to design.
+
+        Context (this section is the issue itself):
+        ---
+        Issue Title: ${currentIssueTitle}
+        ---
+        Issue Body: ${currentIssueBody}
+        ---
+        be carefull of the context, so take a deep breath and read the context carefully so judge on how to label the issue.
+        Your answer should be a json that satisfies this Typescript interface:
+        type Output = {
+          labels: string[],
+          content: string,
+        }
+        for the content on the Output interface, just write a really short message about how you labeled the issue.
+        Take a deep breath and answer this, i will tip you 30$ if you answer this correctly. you can do it!
+        `
+        const messages = [
+          { "role": "system", "content": systemPrompt },
+          { "role": "user", "content": `What labels should this issue have? ${currentIssue}` }
+        ] as any
+
+        // Request the OpenAI API for the response based on the prompt
+        const completion = await openai.chat.completions.create({
+          messages: messages,
+          model: botConfig.gptModel,
+          response_format: { type: "json_object" },
+        });
+
+        const answer = completion.choices[0]
+
+        console.log(answer, 'answer no labels')
+
+        const finalResponse = JSON.parse(answer.message.content as any) as Output
+
+        await createComment(context, "AI response: " + finalResponse.content);
+        await addLabels(context, finalResponse.labels);
+      } else {
       await createComment(context, "Thanks for opening this issue! A maintainer will look into this shortly.");
+      }
     }
   });
-  // For more information on building apps:
-  // https://probot.github.io/docs/
-
-  // To get your app running against GitHub, see:
-  // https://probot.github.io/docs/development/
 };
