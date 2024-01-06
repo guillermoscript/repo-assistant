@@ -7,7 +7,6 @@ Right now this is just a blueprint and the bot works on this repo wwhen I run it
 More features will be added as I go along. Hope you enjoy it.
 
 
-
 ## Setup
 
 ```sh
@@ -30,6 +29,16 @@ docker build -t repo-assistant .
 # 2. Start container
 docker run -e APP_ID=<app-id> -e PRIVATE_KEY=<pem-value> repo-assistant
 ```
+
+## Sync existing issues
+
+If you want to sync existing first you will need to have a github token with repo access and then run this command, you can go to [github.com/settings/tokens](https://github.com/settings/tokens) to create a token.
+After that you will need to run this command
+
+```sh
+npm run sync --user=<username> --repo=<repo>
+```
+Always be sure to have the .env file with the supabasem, openai and github token. And to build the ts before running the command.
 
 ## Contributing
 
@@ -58,6 +67,9 @@ create table
     metadata jsonb null,
     embedding public.vector null,
     created_at timestamp with time zone null default current_timestamp,
+    issue_number bigint null,
+    issue_id bigint null,
+    repo_id bigint null,
     constraint documents_pkey primary key (id)
   ) tablespace pg_default;
 
