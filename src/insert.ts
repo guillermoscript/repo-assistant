@@ -34,35 +34,43 @@ export const createEmbeddingsAndSaveToDatabase = async (inputText: string, repoI
 
     for (let index = 0; index < chunks.length; index++) {
         const chunk = chunks[index];
+        
+        try {
+            // Generate embedding for the chunk
+            const embeddingResponse = await openai.embeddings.create({
+                input: chunk,
+                model: 'text-embedding-ada-002'
+            });
+            const embedding = embeddingResponse.data[0].embedding;
     
-        // Generate embedding for the chunk
-        const embeddingResponse = await openai.embeddings.create({
-            input: chunk,
-            model: 'text-embedding-ada-002'
-        });
-        const embedding = embeddingResponse.data[0].embedding;
-
-        // Insert the chunk content and its embedding into the database
-        const { data, error } = await supabaseClient
-            .from('documents')
-            .insert([
-                {
-                    content: chunk,
-                    embedding: embedding,
-                    metadata: {
+            // Insert the chunk content and its embedding into the database
+            const { data, error } = await supabaseClient
+                .from('documents')
+                .insert([
+                    {
+                        content: chunk,
+                        embedding: embedding,
+                        metadata: {
+                            repo_id: repoId,
+                            issue_id: issueId,
+                            issue_number: issueNumber,
+                        },
                         repo_id: repoId,
                         issue_id: issueId,
                         issue_number: issueNumber,
                     }
-                }
-            ]);
-
-        if (error) {
+                ]);
+    
+            if (error) {
+                console.error('Error inserting data into Supabase:', error);
+                return false;
+            }
+    
+            console.log('Data inserted successfully:', data);
+        } catch (error) {
             console.error('Error inserting data into Supabase:', error);
             return false;
         }
-
-        console.log('Data inserted successfully:', data);
     }
 
     return true;

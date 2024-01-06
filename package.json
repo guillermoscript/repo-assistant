@@ -5,7 +5,7 @@
   "description": "an ai assistant for your repo",
   "author": "guillermoscript",
   "license": "ISC",
-  "homepage": "https://github.com//",
+  "homepage": "https://github.com/",
   "keywords": [
     "probot",
     "github",
@@ -14,10 +14,13 @@
   "scripts": {
     "build": "tsc",
     "start": "probot run ./lib/index.js",
-    "test": "jest"
+    "test": "jest",
+    "sync": "node ./lib/sync.js $user $repo"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.2",
+    "dotenv": "^16.3.1",
+    "octokit": "^3.1.2",
     "openai": "^4.24.1",
     "probot": "^12.2.4"
   },
