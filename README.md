@@ -28,6 +28,7 @@ Currently, Repo Assistant AI is in its initial stages and operates locally. In t
 ![Screen Shot 2024-01-07 at 10 23 53 AM](https://github.com/guillermoscript/repo-assistant/assets/52298929/84ced6ae-dc65-4a74-9685-6db363e893cd)
 ![Screen Shot 2024-01-07 at 10 59 19 AM](https://github.com/guillermoscript/repo-assistant/assets/52298929/0e10e581-3787-4e9e-93fb-1bc455e5a82e)
 ![Screen Shot 2024-01-07 at 10 59 50 AM](https://github.com/guillermoscript/repo-assistant/assets/52298929/b0f9050c-9523-4680-ac56-a9dc1406722e)
+
 ## Features
 
 - [x] Sync existing issues
@@ -48,6 +49,7 @@ Those are the main features that I can think of right now. If you have any other
 ![Screen Shot 2024-01-07 at 10 23 53 AM](https://github.com/guillermoscript/repo-assistant/assets/52298929/84ced6ae-dc65-4a74-9685-6db363e893cd)
 ![Screen Shot 2024-01-07 at 10 59 19 AM](https://github.com/guillermoscript/repo-assistant/assets/52298929/0e10e581-3787-4e9e-93fb-1bc455e5a82e)
 ![Screen Shot 2024-01-07 at 10 59 50 AM](https://github.com/guillermoscript/repo-assistant/assets/52298929/b0f9050c-9523-4680-ac56-a9dc1406722e)
+
 
 ### Prerequisites
 
@@ -152,9 +154,52 @@ To use Supabase, follow these steps:
 
 3. Navigate to the SQL editor in your project's dashboard and run the following SQL commands to set up the necessary tables and functions:
 
-    ```sql
-    -- Your SQL setup code here...
-    ```
+```sql
+-- Enable the pgvector extension to work with embedding vectors
+create extension vector;
+
+
+create table
+  public.documents (
+    id bigserial,
+    content text null,
+    metadata jsonb null,
+    embedding public.vector null,
+    created_at timestamp with time zone null default current_timestamp,
+    issue_number bigint null,
+    issue_id bigint null,
+    repo_id bigint null,
+    constraint documents_pkey primary key (id)
+  ) tablespace pg_default;
+
+create or replace function match_documents (
+  query_embedding vector(1536),
+  match_count int default null,
+  filter jsonb DEFAULT '{}',
+  match_threshold double precision DEFAULT NULL::double precision
+) returns table (
+  id bigint,
+  content text,
+  metadata jsonb,
+  similarity float -- This column expects a float value
+)
+language plpgsql
+as $$
+begin
+  return query
+  select
+    documents.id,
+    documents.content,
+    documents.metadata,
+    1 - (documents.embedding <=> query_embedding) as similarity -- Ensure this is a float
+  from documents
+  where documents.metadata @> filter
+  and (match_threshold is null or (1 - (documents.embedding <=> query_embedding)) > match_threshold)
+  order by documents.embedding <=> query_embedding
+  limit match_count;
+end;
+$$;
+```
 
 4. Don't forget to add your Supabase URL and ANON KEY to the `.env` file as shown in the [Configuration](#configuration) section.
 
