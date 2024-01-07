@@ -13,6 +13,7 @@ Welcome to Repo Assistant AI! 🎉 This GitHub App is built with [Probot](https:
   - [Configuration](#configuration)
 - [Docker Deployment](#docker-deployment)
 - [Sync Existing Issues](#sync-existing-issues)
+- [Examples](#examples)
 - [Gallery](#gallery)
 - [Contributing](#contributing)
 - [License](#license)
@@ -121,6 +122,12 @@ To synchronize existing issues, you'll need a GitHub token with repository acces
     ```
 
 Make sure to have the `.env` file set up with Supabase, OpenAI, and GitHub tokens before running the command.
+
+## Examples
+
+Duplicate Issue: [here](https://github.com/guillermoscript/repo-assistant/issues/57)
+Original Issue: [here](https://github.com/guillermoscript/repo-assistant/issues/13)
+New Unique Issue With labels added: [here](https://github.com/guillermoscript/repo-assistant/issues/53)
 
 
 ## Gallery
