@@ -2,6 +2,7 @@
 
 Welcome to Repo Assistant AI! 🎉 This GitHub App is built with [Probot](https://github.com/probot/probot) and integrates [OpenAI](https://openai.com/) to help maintainers identify and label duplicate issues automatically. Using the power of OpenAI's embeddings and Supabase's database, this app streamlines your workflow by finding similarities between issues.
 
+
 ## Table of Contents
 
 - [Bot Usage](#bot-usage)
@@ -18,16 +19,11 @@ Welcome to Repo Assistant AI! 🎉 This GitHub App is built with [Probot](https:
 - [Setting Up Supabase](#setting-up-supabase)
 - [Setting Up OpenAI](#setting-up-openai)
 
+
 ## Bot Usage
 
 Currently, Repo Assistant AI is in its initial stages and operates locally. In the future, it will be ready for server deployment and will work across various repositories. For now, follow the steps below to get started, set up your own instance, and test it on your chosen repositories.
 
-
-## Gallery
-
-![Screen Shot 2024-01-07 at 10 23 53 AM](https://github.com/guillermoscript/repo-assistant/assets/52298929/84ced6ae-dc65-4a74-9685-6db363e893cd)
-![Screen Shot 2024-01-07 at 10 59 19 AM](https://github.com/guillermoscript/repo-assistant/assets/52298929/0e10e581-3787-4e9e-93fb-1bc455e5a82e)
-![Screen Shot 2024-01-07 at 10 59 50 AM](https://github.com/guillermoscript/repo-assistant/assets/52298929/b0f9050c-9523-4680-ac56-a9dc1406722e)
 
 ## Features
 
@@ -42,14 +38,8 @@ Currently, Repo Assistant AI is in its initial stages and operates locally. In t
 
 Those are the main features that I can think of right now. If you have any other ideas, feel free to open an issue or submit a pull request!
 
+
 ## Getting Started
-
-## Gallery
-
-![Screen Shot 2024-01-07 at 10 23 53 AM](https://github.com/guillermoscript/repo-assistant/assets/52298929/84ced6ae-dc65-4a74-9685-6db363e893cd)
-![Screen Shot 2024-01-07 at 10 59 19 AM](https://github.com/guillermoscript/repo-assistant/assets/52298929/0e10e581-3787-4e9e-93fb-1bc455e5a82e)
-![Screen Shot 2024-01-07 at 10 59 50 AM](https://github.com/guillermoscript/repo-assistant/assets/52298929/b0f9050c-9523-4680-ac56-a9dc1406722e)
-
 
 ### Prerequisites
 
@@ -103,6 +93,7 @@ Before you start, make sure you have:
     npm start
     ```
 
+
 ## Docker Deployment
 
 To deploy the app using Docker, follow these steps:
@@ -117,6 +108,7 @@ To deploy the app using Docker, follow these steps:
     docker run -e APP_ID=<app-id> -e PRIVATE_KEY=<pem-value> repo-assistant
     ```
 
+
 ## Sync Existing Issues
 
 To synchronize existing issues, you'll need a GitHub token with repository access:
@@ -130,19 +122,23 @@ To synchronize existing issues, you'll need a GitHub token with repository acces
 
 Make sure to have the `.env` file set up with Supabase, OpenAI, and GitHub tokens before running the command.
 
+
 ## Gallery
 
 ![Screen Shot 2024-01-07 at 10 23 53 AM](https://github.com/guillermoscript/repo-assistant/assets/52298929/84ced6ae-dc65-4a74-9685-6db363e893cd)
 ![Screen Shot 2024-01-07 at 10 59 19 AM](https://github.com/guillermoscript/repo-assistant/assets/52298929/0e10e581-3787-4e9e-93fb-1bc455e5a82e)
 ![Screen Shot 2024-01-07 at 10 59 50 AM](https://github.com/guillermoscript/repo-assistant/assets/52298929/b0f9050c-9523-4680-ac56-a9dc1406722e)
 
+
 ## Contributing
 
 Got ideas on how to make Repo Assistant AI even better? Want to report a bug? Feel free to open an issue or submit a pull request! Check out our [Contributing Guide](CONTRIBUTING.md) for more information on how to get involved.
 
+
 ## License
 
 Repo Assistant AI is open source software [licensed as ISC](LICENSE) © 2024 guillermoscript.
+
 
 ## Setting Up Supabase
 
@@ -202,6 +198,7 @@ $$;
 ```
 
 4. Don't forget to add your Supabase URL and ANON KEY to the `.env` file as shown in the [Configuration](#configuration) section.
+
 
 ## Setting Up OpenAI
 
