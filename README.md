@@ -19,6 +19,7 @@ Welcome to Repo Assistant AI! 🎉 This GitHub App is built with [Probot](https:
 - [License](#license)
 - [Setting Up Supabase](#setting-up-supabase)
 - [Setting Up OpenAI](#setting-up-openai)
+- [Deploying the App](#deploying-the-app)
 
 
 ## Bot Usage
@@ -33,8 +34,6 @@ Currently, Repo Assistant AI is in its initial stages and operates locally. In t
 - [x] Label duplicate issues
 - [x] Work across repositories
 - [x] Add labels to opened issues without labels, and a brief description on why it was labeled
-- [ ] Add labels to opened issues with labels (Not sure if this is necessary)
-- [ ] Add labels to closed issues (Not sure if this is necessary)
 - [ ] Deploy to server
 
 Those are the main features that I can think of right now. If you have any other ideas, feel free to open an issue or submit a pull request!
@@ -49,6 +48,7 @@ Before you start, make sure you have:
 - A GitHub account
 - A Supabase account
 - An OpenAI account
+- node v18 or higher
 
 ### Installation
 
@@ -67,6 +67,26 @@ Before you start, make sure you have:
     ```sh
     npm run build
     ```
+4. Run the bot:
+    ```sh
+    npm start
+   ```
+
+5. Go ahead and click the Register a GitHub App button.
+6. Next, you'll get to decide on an app name that isn't already taken. Note: if you see a message "Name is already in use" although no such app exists, it means that a GitHub 7. 7. 7.. organization with that name exists and cannot be used as an app name.
+7. After registering your GitHub App, you'll be redirected to install the app on any repositories. At the same time, you can check your local .env and notice it will be populated with values GitHub sends us in the course of that redirect.
+8. Restart the server in your terminal (press ctrl + c to stop the server)
+9. Install the app on a test repository.
+10. Try creating an issue on the repository you installed the app on. You should see a comment from the bot on the issue.
+11. You're all set! 
+
+if you want to sync existing issues, you can run the following command:
+
+```sh
+npm run sync --user=<username> --repo=<repo>
+```
+
+Make sure to have the `.env` file set up with Supabase, OpenAI, and GitHub tokens before running the command.
 
 ### Configuration
 
@@ -218,3 +238,8 @@ To set up OpenAI:
 3. Add your OpenAI API key to the `.env` file as described in the [Configuration](#configuration) section.
 
 We're excited to have you try out Repo Assistant AI! If you encounter any issues or have questions, don't hesitate to reach out.
+
+## Deploying the App
+
+To deploy the app, follow these from the probot docs [here](https://probot.github.io/docs/deployment/).
+As of now, the app is not ready for deployment as GPT is quite expensive to run. However, if you want to deploy it, you can follow the instructions in the link above.
