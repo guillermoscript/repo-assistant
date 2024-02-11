@@ -173,6 +173,12 @@ export = (app: Probot) => {
   });
 
   app.on(
+    "pull_request.opened",
+    async () => {
+      console.log('pull request opened')
+    });
+
+  app.on(
     ['pull_request.opened', 'pull_request.synchronize'], async (context) => {
       console.log('pull request opened')
       const repo = context.repo();
