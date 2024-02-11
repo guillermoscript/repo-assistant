@@ -174,6 +174,7 @@ export = (app: Probot) => {
 
   app.on(
     ['pull_request.opened', 'pull_request.synchronize'], async (context) => {
+      console.log('pull request opened')
       const repo = context.repo();
       const pullRequest = context.payload.pull_request;
       const creator = pullRequest.user.login;
