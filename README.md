@@ -75,7 +75,7 @@ Before you start, make sure you have:
    ```
 
 5. Go ahead and click the Register a GitHub App button.
-6. Next, you'll get to decide on an app name that isn't already taken. Note: if you see a message "Name is already in use" although no such app exists, it means that a GitHub 7. 7. 7.. organization with that name exists and cannot be used as an app name.
+6. Next, you'll get to decide on an app name that isn't already taken. Note: if you see a message "Name is already in use" although no such app exists, it means that a GitHub organization with that name exists and cannot be used as an app name.
 7. After registering your GitHub App, you'll be redirected to install the app on any repositories. At the same time, you can check your local .env and notice it will be populated with values GitHub sends us in the course of that redirect.
 8. Restart the server in your terminal (press ctrl + c to stop the server)
 9. Install the app on a test repository.
