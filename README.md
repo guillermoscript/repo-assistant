@@ -1,3 +1,5 @@
+hello world
+
 # Repo Assistant AI
 
 Welcome to Repo Assistant AI! 🎉 This GitHub App is built with [Probot](https://github.com/probot/probot) and integrates [OpenAI](https://openai.com/) to help maintainers identify and label duplicate issues automatically. Using the power of OpenAI's embeddings and Supabase's database, this app streamlines your workflow by finding similarities between issues.
