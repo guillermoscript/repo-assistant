@@ -108,9 +108,13 @@ export async function buildChatBot(): Promise<ChatBotHandle> {
     function ingestIssueComment(payload: any): boolean {
         const raw = makeRaw(payload);
         if (!raw) return false;
-        // Filter own comments. GitHub Apps post as "<name>[bot]"; humans mention as "@<name>".
-        // Compare against both forms so feedback loops don't trigger regardless of which form
-        // the user puts in BOT_USERNAME.
+        // Filter own comments to prevent self-loops. The Chat SDK adapter authenticates
+        // with GITHUB_TOKEN (a PAT in dev), so posts appear under the PAT user — not the
+        // GitHub App's bot login. Filter on:
+        //   1. our marker prefix "AI response:" (covers PAT-posted bot messages)
+        //   2. bot login (covers GitHub App auth)
+        //   3. App's bot login form "<name>[bot]"
+        if (payload.comment.body?.startsWith("AI response:")) return false;
         const author = payload.comment.user?.login;
         if (author === env.botUserName || author === `${env.botUserName}[bot]`) return false;
 
