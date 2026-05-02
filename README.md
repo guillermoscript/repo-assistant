@@ -106,6 +106,7 @@ Key choices:
 - [Docker Deployment](#docker-deployment)
 - [Sync Existing Issues](#sync-existing-issues)
 - [Auto-Closer](#auto-closer)
+- [Comment Commands](#comment-commands)
 - [Quality Evaluation](#quality-evaluation)
 - [Gallery](#gallery)
 - [Contributing](#contributing)
@@ -126,6 +127,7 @@ Currently, Repo Assistant AI is in its initial stages and operates locally. In t
 - [x] Find duplicate issues (identical, paraphrased, and cross-lingual)
 - [x] Label duplicate issues (`duplicate` confident, `possible-duplicate` uncertain)
 - [x] Auto-close confirmed duplicates after a 72h grace period (opt-in, see [Auto-Closer](#auto-closer))
+- [x] Comment commands via Chat SDK: `@bot dup #N`, `@bot notdup`, `@bot quality`, `@bot relabel ...`, plus free-form AI follow-ups (opt-in, see [Comment Commands](#comment-commands))
 - [x] Work across repositories
 - [x] Add labels to opened issues without labels, and a brief description on why it was labeled
 - [ ] Deploy to server
@@ -283,6 +285,41 @@ npm run auto-close
 ```
 
 The script logs one line per candidate issue with the decision (`skip` and reason, or `would close` / `closing`).
+
+## Comment Commands
+
+When `CHAT_SDK_ENABLED=true`, the bot also listens to issue comments and responds to @-mentions. Built on the [Chat SDK](https://chat-sdk.dev) GitHub adapter — same primitives as a Slack/Discord bot, scoped to GitHub issues.
+
+### Available commands
+
+@-mention the bot followed by one of these:
+
+| Command | What it does |
+|---|---|
+| `@<bot> dup #123` | Manually confirm the issue is a duplicate of #123. Bot adds the `duplicate` label, removes `possible-duplicate`/`needs triage`, posts confirmation. |
+| `@<bot> notdup` | Reject the bot's duplicate classification. Removes `duplicate` and `possible-duplicate`, adds `needs triage`. |
+| `@<bot> quality` | Run a quality assessment. Scores 0-100 across 5 dimensions (length & detail, structure, repro steps, examples, context) with one-line notes and improvement suggestions. |
+| `@<bot> relabel a, b, c` | Replace the issue's labels with the given comma-separated list. |
+| Anything else | Free-form AI reply. The bot reads the thread history (last 10 messages) and the issue title/body, then answers as a triage assistant in 1-3 sentences. |
+
+The bot subscribes to the thread on the first @-mention, so follow-up messages don't need another mention.
+
+### Setup
+
+The Chat SDK packages are ESM-only and the rest of the project compiles to CJS, so `src/chatBot.ts` lazy-loads them via dynamic `import()`. No second webhook URL is needed — Probot's existing `issue_comment.created` event is forwarded into Chat SDK via `bot.processMessage()`, reusing the already-verified payload.
+
+Required env vars (also in `.env.example`):
+
+```env
+CHAT_SDK_ENABLED=true
+BOT_USERNAME=repo-assistant-ai            # bare login (no [bot] suffix)
+DATABASE_URL=postgres://...               # Postgres for Chat SDK state (subscriptions, locks)
+GITHUB_TOKEN=ghp_...                      # PAT with repo scope, used by adapter REST calls
+```
+
+Also: in your GitHub App settings, subscribe the App to **Issue comment** events. The repo's `app.yml` manifest already lists it but the live App settings have to be updated separately.
+
+State (subscriptions, distributed locks, dedupe) lives in Postgres under the `repo_assistant_chat_sdk:*` key prefix. Same Supabase Postgres as `documents`; isolated by prefix, no schema migration needed (state-pg auto-creates its tables).
 
 ## Quality Evaluation
 

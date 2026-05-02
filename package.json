@@ -20,6 +20,8 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.58",
+    "@chat-adapter/github": "^4.27.0",
+    "@chat-adapter/state-pg": "^4.27.0",
     "@supabase/supabase-js": "^2.105.1",
     "ai": "^6.0.174",
     "chat": "^4.27.0",
