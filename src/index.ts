@@ -75,8 +75,8 @@ export = (app: Probot) => {
     const { data, error } = await supabaseClient.rpc('match_documents', {
       query_embedding: queryEmbedding,
       filter_repo_id: repoId,
-      match_count: 5,
-      match_threshold: behaviorConfig.similarityThreshold,
+      match_count: behaviorConfig.candidateCount,
+      match_threshold: behaviorConfig.candidateThreshold,
     });
 
     if (error) {
@@ -89,29 +89,31 @@ export = (app: Probot) => {
     }
 
     const matches = (data as MatchRow[]).filter((m) => m.issue_id !== issueId);
-    const potentialDuplicate = matches.length > 0 && matches[0].similarity > behaviorConfig.similarityThreshold;
 
-    if (potentialDuplicate) {
-      const systemPrompt = `Given the following sections from a github issues, answer if the new issue is duplicate or not, if the issue is duplicate or similar write the issue number with a # like this: "#IssueNumber", so github creates the link to it, also please add a brief explanation on why this is a duplicate.
-      Context (this section are all the issues that are related to the current issue):
-    ---
-    ${matches.map((m) => m.content).join('\n---\n')}
-    ---
-      the releated issues number is:
-    ---
-    ${matches.map((m) => m.issue_number).join('\n---\n')}
-    ---
-    New Issue (remember to include the issue number if its a duplicate, or if its similar to another issue, beware if the issue is not similar to any other issue, just say that its not similar to any other issue and its good to go, also be carefull of the context, so take a deep breath and read the context carefully so judge if its duplicate or not):
-    ---
-    ${currentIssue}
-    ---
-    New Issue Number (without the # symbol, and the repo id and issue id, just the issue number, dont ):
-    ---
-    ${issueNumber} ${repoId} ${issueId}
-    ---
-    If you are unsure and the answer is not explicitly written in the documentation, set content to "Im unsure the issue is duplicate or similar to any other issue, so I will leave it to the maintainer to decide" and add the label "needs triage" to labels.
-    `
-      await generateAndApply(context, systemPrompt, `Is this issue a duplicate or not? ${currentIssue}`);
+    if (matches.length > 0) {
+      // Always let the LLM judge from candidates above the floor. Embedding similarity alone
+      // misses paraphrases and cross-lingual duplicates; the LLM handles both reliably.
+      const systemPrompt = `You are judging whether a new GitHub issue is a duplicate of any existing issue.
+
+Candidates retrieved by semantic similarity (may include unrelated issues — judge carefully):
+---
+${matches.map((m) => `Issue #${m.issue_number} (similarity ${m.similarity.toFixed(3)}):\n${m.content}`).join('\n---\n')}
+---
+
+New issue (number ${issueNumber}):
+---
+${currentIssue}
+---
+
+Rules:
+- A duplicate describes the SAME underlying problem, feature, or question — even if worded differently or in a different language.
+- Paraphrases and translations of an existing issue ARE duplicates.
+- Issues touching the same area but describing a different problem are NOT duplicates.
+- Three confidence levels:
+  1. CONFIDENT DUPLICATE → labels: ["duplicate"]. Content: short message that includes the original issue number prefixed with "#" (e.g. "#42") so GitHub auto-links it, plus a one-sentence reason.
+  2. POSSIBLE DUPLICATE (looks similar but you're not sure same problem, OR partial overlap) → labels: ["possible-duplicate", "needs triage"]. Content: name the candidate as "#N" and ask the maintainer to confirm.
+  3. NOT A DUPLICATE → do NOT include "duplicate" or "possible-duplicate". Label the new issue based on its content (bug, enhancement, feature, question, documentation, performance, security, design, needs triage, invalid, wontfix, good first issue, help wanted, testing). Content: short note on labeling.`
+      await generateAndApply(context, systemPrompt, `Is this issue a duplicate of any candidate? ${currentIssue}`);
     } else {
       if (!context.payload.issue.labels || context.payload.issue.labels.length === 0) {
         const systemPrompt = `Given the following sections from a github issues, add proper labels to the issue, depending on the context of the issue, for example: "bug" for bug issues, "enhancement" for enhancement issues, "question" for question issues, "needs triage" for issues that need to be triaged, "invalid" for issues that are invalid, "wontfix" for issues that wont be fixed, "good first issue" for issues that are good for first time contributors, "help wanted" for issues that need help from the community, "documentation" for issues that are related to documentation, "testing" for issues that are related to testing, "feature" for issues that are related to new features, "performance" for issues that are related to performance, "security" for issues that are related to security, "design" for issues that are related to design.

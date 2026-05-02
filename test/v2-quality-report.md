@@ -131,3 +131,71 @@ The score ceiling is the duplicate-detection threshold strategy, not the RAG plu
 - 36 test issues created and closed (#94–#134, plus the post-fix smoke test #116).
 - `documents` table holds 18 embeddings from Run 2.
 - Bot logs in background task `b74vf7nzc`.
+
+---
+
+## Run 3 — After two-stage retrieval + threshold drop
+
+After applying:
+- Lowered `candidateThreshold` 0.8 → 0.65 (matches simili-bot convention).
+- Dropped the cosine-only duplicate gate. Bot now always retrieves top-5 candidates above 0.65 and lets the LLM judge from candidate text.
+- New system prompt with explicit rules: paraphrase = dup, translation = dup, same-area-different-problem ≠ dup. Three confidence levels (`duplicate` / `possible-duplicate` + `needs triage` / not-dup label-by-content).
+
+Issues #135–#152 (5 seed + 13 tests). Result: **13/13 pass (100%)**.
+
+### Detailed Run 3 results
+
+| # | ID | Scenario | Labels | Comment ref | Status vs Run 2 |
+|---|---|---|---|---|---|
+| 135 | S1 | Bot crashes on PRs no body | `bug, needs triage` | – | seed (pass) |
+| 136 | S2 | Add dark mode toggle | `enhancement, feature` | – | seed (pass) |
+| 137 | S3 | Docs missing for /sync | `documentation, enhancement` | – | seed (pass) |
+| 138 | S4 | How configure Supabase locally | `documentation, question` | – | seed (pass) |
+| 139 | S5 | Memory leak after 24h | `bug, performance` | – | seed (pass) |
+| 140 | L1 | SSL cert error | `bug, enhancement, security` | – | ✅ pass |
+| 141 | L2 | CSV export | `enhancement, help wanted, feature` | – | ✅ pass |
+| 142 | L3 | First-time setup tutorial | `documentation, good first issue, help wanted` | – | ✅ pass |
+| 143 | L4 | Empty body title="test" | `needs triage` | – | ✅ pass |
+| 144 | D1 | Paraphrase of #135 | `duplicate` | `#135` | ✅ pass |
+| 145 | D2 | Paraphrase of #139 | `duplicate` | `#139` | ✅ **NEW PASS** (was fail) |
+| 146 | D3 | Spanish copy of #136 | `duplicate` | `#136` | ✅ **NEW PASS** (was fail) |
+| 147 | E1 | Crypto spam | `invalid, needs triage` | – | ✅ pass |
+| 148 | E2 | Code dump only | `needs triage` | – | ✅ pass |
+| 149 | E3 | Chinese title | `bug, needs triage` | – | ✅ pass |
+| 150 | E4 | Prompt injection | `invalid, needs triage` | – | ✅ pass — defense holds |
+| 151 | T1 | Related fork-PR bug (not dup) | `bug, needs triage, security` | – | ✅ pass — LLM correctly rejected |
+| 152 | T2 | Identical to #135 | `duplicate` | `#135` | ✅ pass |
+
+### Run 3 summary
+
+| Category | Pass | Fail | Total |
+|---|---|---|---|
+| Auto-label (L1-L4) | 4 | 0 | 4 |
+| Duplicate detection (D1-D3) | **3** | **0** | **3** |
+| Adversarial (E1-E4) | 4 | 0 | 4 |
+| Threshold edge (T1, T2) | 2 | 0 | 2 |
+| **Total** | **13** | **0** | **13** |
+
+**Pass rate: 100%** (+15.4% vs Run 2). Both prior failures fixed.
+
+### Why Run 3 fixed D2 and D3
+
+- **D2** (paraphrased memory leak): cosine similarity to S5 was below the old 0.8 floor (~0.7), so the bot never asked the LLM. With the floor at 0.65 the candidate enters the LLM context, and the LLM correctly identifies the paraphrase as a duplicate of #139.
+- **D3** (Spanish dark mode): same path. Cross-lingual embeddings clear 0.65 even though they don't clear 0.8. LLM reads both texts and recognises the translation as a duplicate of #136.
+
+### Why T1 still passes (no false positive)
+
+T1 is the same area as S1 (PR-from-fork bugs) but a *different* problem (webhook signature vs null body). Its embedding clears the 0.65 floor — but the LLM correctly applies the "same area but different problem ≠ duplicate" rule and labels it as a regular bug.
+
+### Confidence-level usage
+
+The new `possible-duplicate` label was available but the LLM did not need it on this corpus — it was always confident enough for either `duplicate` or a normal label. Keeps the option open for ambiguous future cases.
+
+---
+
+## v3 changes summary
+
+- `src/config.ts`: `similarityThreshold: 0.8` → `candidateThreshold: 0.65` + `candidateCount: 5`.
+- `src/index.ts`: Removed the `potentialDuplicate` cosine gate. Always run LLM judge when candidates exist.
+- New system prompt with three confidence levels (`duplicate`, `possible-duplicate`, label-by-content).
+

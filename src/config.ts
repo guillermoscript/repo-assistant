@@ -4,5 +4,9 @@ export const modelConfig = {
 };
 
 export const behaviorConfig = {
-    similarityThreshold: 0.8,
+    // Floor for candidate retrieval. LLM judges duplication from candidates above this floor.
+    // 0.65 matches simili-bot convention; tuned to recall paraphrases that 0.8 misses.
+    candidateThreshold: 0.65,
+    // Top-K candidates fetched and shown to the LLM for duplicate judgment.
+    candidateCount: 5,
 };
