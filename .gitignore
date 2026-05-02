@@ -5,3 +5,9 @@ npm-debug.log
 .env
 coverage
 lib
+tsconfig.tsbuildinfo
+.claude/
+.agents/
+skills-lock.json
+supabase/.temp/
+supabase/.branches/

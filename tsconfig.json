@@ -16,7 +16,7 @@
     "sourceMap": true /* Generates corresponding '.map' file. */,
     // "outFile": "./",                       /* Concatenate and emit output to single file. */
     "outDir": "./lib" /* Redirect output structure to the directory. */,
-    // "rootDir": "./",                       /* Specify the root directory of input files. Use to control the output directory structure with --outDir. */
+    "rootDir": "./src",
     // "composite": true,                     /* Enable project compilation */
     // "tsBuildInfoFile": "./" /* Specify file to store incremental compilation information */,
     // "removeComments": true,                /* Do not emit comments to output. */
@@ -67,7 +67,8 @@
     "forceConsistentCasingInFileNames": true /* Disallow inconsistently-cased references to the same file. */,
     "resolveJsonModule": true,
     "pretty": false,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "ignoreDeprecations": "6.0"
   },
   "include": ["src/"],
   "compileOnSave": false

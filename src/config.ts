@@ -1,14 +1,8 @@
-import { ChatCompletionCreateParamsBase } from "openai/resources/chat/completions"
+export const modelConfig = {
+    chatModel: process.env.OPENAI_CHAT_MODEL ?? "gpt-5.4-mini",
+    embeddingModel: process.env.OPENAI_EMBEDDING_MODEL ?? "text-embedding-3-small",
+};
 
-type Config = {
-    similarityThreshold: number,
-    gptModel: ChatCompletionCreateParamsBase['model']
-    emmbeddingModel: string
-}
-
-export const botConfig: Config = {
-    // Define a similarity threshold
+export const behaviorConfig = {
     similarityThreshold: 0.8,
-    gptModel: "gpt-4-turbo-preview",
-    emmbeddingModel: 'text-embedding-3-small' // issues with the model
-}
+};
