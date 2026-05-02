@@ -199,3 +199,53 @@ The new `possible-duplicate` label was available but the LLM did not need it on 
 - `src/index.ts`: Removed the `potentialDuplicate` cosine gate. Always run LLM judge when candidates exist.
 - New system prompt with three confidence levels (`duplicate`, `possible-duplicate`, label-by-content).
 
+---
+
+## Run 4 — Confidence-tier output + possible-duplicate lifecycle
+
+After applying:
+- LLM now emits a numeric `confidence` (0-100) and `duplicate_of` along with reasoning.
+- Threshold mapping: ≥90 → `duplicate`, 50-89 → `possible-duplicate` + `needs triage`, <50 → label-by-content.
+- Comments now include the confidence percentage explicitly ("Confidence 99% — duplicate of #154").
+- `judgeDuplicate` extracted to `src/duplicateJudge.ts` so both `index.ts` and `autoClose.ts` can call it.
+- `autoClose.ts` now scans both `duplicate` AND `possible-duplicate` labels:
+  - `duplicate` issues: existing close-after-grace flow.
+  - `possible-duplicate` issues: after grace + no override, re-fetch candidates from Supabase and re-run `judgeDuplicate`. If confidence ≥ 90, promote label `possible-duplicate` → `duplicate` and close. If < 50, remove the `possible-duplicate` label (false alarm). Else (50-89), leave alone.
+
+### Test design
+
+Smaller targeted run (8 issues) to verify the new schema + lifecycle, not the full 13-scenario regression. Issues #154–#161.
+
+| # | ID | Scenario | Bot's labels | Confidence | Status |
+|---|---|---|---|---|---|
+| 154 | S1 | Bot crashes on PRs no body | `bug, needs triage` | – | seed |
+| 155 | S2 | Add dark mode toggle | `enhancement, feature` | – | seed |
+| 156 | S3 | Memory leak after 24h | `bug, performance` | – | seed |
+| 157 | D1 | Byte-identical to S1 | `duplicate` | **99%** | ✅ confident dup |
+| 158 | D2 | Paraphrase of S3 | `duplicate` | **98%** | ✅ paraphrase caught |
+| 159 | D3 | Spanish copy of S2 | `duplicate` | **98%** | ✅ cross-lingual caught |
+| 160 | D4 | Ambiguous overlap with S3 | `possible-duplicate, needs triage` | **82%** | ✅ middle tier exercised |
+| 161 | T1 | Same area as S1, different bug | `bug, security` | – | ✅ correctly NOT a dup |
+
+All confident duplicates land in the 95-99% range; the deliberately ambiguous case lands at 82% which correctly maps to `possible-duplicate`.
+
+### autoClose lifecycle test (dry run, grace=0)
+
+```
+[guillermoscript/repo-assistant] scanning open issues with label:duplicate
+[#159] DRY RUN — would close
+[#158] DRY RUN — would close
+[#157] DRY RUN — would close
+[guillermoscript/repo-assistant] scanning open issues with label:possible-duplicate
+[#160] skip — re-judge still uncertain (62%) — leaving as possible-duplicate
+```
+
+The re-judge ran on #160, came back 62% (still in the middle tier), and correctly skipped — neither promoting nor clearing. The middle-tier behavior preserves human-judgment cases instead of forcing them into one bucket on a coin flip.
+
+### Why this is a strict improvement over v3
+
+- **Information gain:** maintainers see the bot's certainty as a number, not just a tier label. Easy to scan triage queues.
+- **No regression:** all v3 wins (paraphrase, cross-lingual, T1 rejection) still hold and now come with explicit confidence.
+- **Lifecycle:** `possible-duplicate` was a dead-end label in v3. In v4 it gets revisited every 6h, can be auto-promoted to `duplicate` (and closed) or auto-cleared, OR left for the maintainer if the LLM is still uncertain.
+- **Code reuse:** the same `judgeDuplicate` helper drives both the issue-creation path and the autoClose re-judge path. Single source of truth for prompt and thresholds.
+
