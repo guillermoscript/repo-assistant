@@ -15,7 +15,8 @@
     "build": "tsc",
     "start": "probot run ./lib/index.js",
     "test": "jest",
-    "sync": "node ./lib/sync.js $user $repo"
+    "sync": "node ./lib/sync.js $user $repo",
+    "auto-close": "node ./lib/autoClose.js"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.58",

@@ -1,0 +1,46 @@
+name: Auto-close confirmed duplicates
+
+# Runs every 6 hours and on manual dispatch. The script is a no-op unless
+# AUTO_CLOSE_ENABLED is set to "true" in the repository's Actions secrets/vars,
+# so installing this workflow does not start closing issues by itself.
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "If true, log decisions without closing"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "true"
+          - "false"
+      grace_hours:
+        description: "Override grace period in hours"
+        required: false
+        type: string
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  auto-close:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run build
+      - name: Run auto-close
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AUTO_CLOSE_ENABLED: ${{ vars.AUTO_CLOSE_ENABLED }}
+          AUTO_CLOSE_REPOS: ${{ github.repository }}
+          AUTO_CLOSE_DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          AUTO_CLOSE_GRACE_HOURS: ${{ inputs.grace_hours || vars.AUTO_CLOSE_GRACE_HOURS || '72' }}
+        run: npm run auto-close

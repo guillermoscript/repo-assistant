@@ -95,6 +95,7 @@ Key choices:
   - [Configuration](#configuration)
 - [Docker Deployment](#docker-deployment)
 - [Sync Existing Issues](#sync-existing-issues)
+- [Auto-Closer](#auto-closer)
 - [Quality Evaluation](#quality-evaluation)
 - [Gallery](#gallery)
 - [Contributing](#contributing)
@@ -112,8 +113,9 @@ Currently, Repo Assistant AI is in its initial stages and operates locally. In t
 ## Features
 
 - [x] Sync existing issues
-- [x] Find duplicate issues
-- [x] Label duplicate issues
+- [x] Find duplicate issues (identical, paraphrased, and cross-lingual)
+- [x] Label duplicate issues (`duplicate` confident, `possible-duplicate` uncertain)
+- [x] Auto-close confirmed duplicates after a 72h grace period (opt-in, see [Auto-Closer](#auto-closer))
 - [x] Work across repositories
 - [x] Add labels to opened issues without labels, and a brief description on why it was labeled
 - [ ] Deploy to server
@@ -224,6 +226,48 @@ To synchronize existing issues, you'll need a GitHub token with repository acces
     ```
 
 Make sure to have the `.env` file set up with Supabase, OpenAI, and GitHub tokens before running the command.
+
+## Auto-Closer
+
+Once an issue has been labeled `duplicate` by the bot, an auto-closer job can close it after a grace period if no human contradicts the decision. Inspired by [simili's auto-close](https://simili.mintlify.app/guides/auto-close.md).
+
+**The auto-closer is OFF by default.** Closing issues is destructive enough that you should opt in only after you trust the bot's duplicate detection on your repo.
+
+### How it works
+
+The job (`src/autoClose.ts`, run as a GitHub Actions cron every 6 hours) does the following for every open issue with the `duplicate` label:
+
+1. Walk the issue timeline to find when a **bot account** (`actor.type === "Bot"`) applied the `duplicate` label.
+2. Skip if the grace period (default **72 hours**) has not elapsed yet.
+3. Skip on any of these **override signals**:
+   - The `duplicate` label was removed.
+   - The issue was reopened after the bot labeled it.
+   - A non-bot user posted a comment after the bot's `AI response:` comment.
+   - A 👎 or 😕 reaction is on the bot's comment.
+4. Otherwise, post a closing comment and close the issue with `state_reason: not_planned`.
+
+### Enabling it
+
+The workflow at `.github/workflows/auto-close.yml` runs on the cron `0 */6 * * *`. To turn it on:
+
+1. In your repo, go to **Settings → Secrets and variables → Actions → Variables**.
+2. Add a repository variable `AUTO_CLOSE_ENABLED` with value `true`.
+3. (Optional) Add `AUTO_CLOSE_GRACE_HOURS` with a custom number of hours.
+
+For a first run we recommend dispatching the workflow manually with `dry_run: true` to see what it would close without doing anything.
+
+### Running locally
+
+```sh
+GITHUB_TOKEN=$(gh auth token) \
+AUTO_CLOSE_ENABLED=true \
+AUTO_CLOSE_REPOS=owner/repo \
+AUTO_CLOSE_DRY_RUN=true \
+AUTO_CLOSE_GRACE_HOURS=72 \
+npm run auto-close
+```
+
+The script logs one line per candidate issue with the decision (`skip` and reason, or `would close` / `closing`).
 
 ## Quality Evaluation
 
