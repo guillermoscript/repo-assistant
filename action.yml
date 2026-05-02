@@ -1,0 +1,45 @@
+name: "repo-assistant"
+description: "AI-powered duplicate-issue detection, auto-labeling, and comment commands for GitHub issues."
+author: "guillermoscript"
+branding:
+  icon: "git-merge"
+  color: "purple"
+
+inputs:
+  openai-api-key:
+    description: "OpenAI API key (used for chat + embedding models). The Vercel AI Gateway is supported transparently if you point OPENAI_BASE_URL at it."
+    required: true
+  supabase-url:
+    description: "Supabase project URL (https://xxx.supabase.co)."
+    required: true
+  supabase-key:
+    description: "Supabase service-role key (needs read+write to the documents table)."
+    required: true
+  mode:
+    description: "Run mode: 'event' (default; reacts to the triggering issue/comment) or 'auto-close' (sweeps duplicate-labeled issues for closure). Match this to the workflow trigger."
+    required: false
+    default: "event"
+  bot-username:
+    description: "Bot login (without [bot] suffix). Required when CHAT_SDK_ENABLED=true. Defaults to github-actions for action context."
+    required: false
+    default: "github-actions"
+  chat-sdk-enabled:
+    description: "Enable Chat SDK comment commands (dup #N, notdup, quality, relabel, free-form). Requires bot-username."
+    required: false
+    default: "true"
+  auto-close-enabled:
+    description: "Allow auto-close mode to actually close issues. Set to 'true' only after you trust the bot's judgment."
+    required: false
+    default: "false"
+  auto-close-grace-hours:
+    description: "Hours after the bot applies the duplicate label before auto-close fires."
+    required: false
+    default: "72"
+  auto-close-dry-run:
+    description: "Log decisions without closing. Useful when first enabling."
+    required: false
+    default: "false"
+
+runs:
+  using: "node20"
+  main: "dist/index.js"

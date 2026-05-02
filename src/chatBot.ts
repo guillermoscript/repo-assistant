@@ -25,7 +25,7 @@ type GitHubBotEnv = {
     githubToken: string;
 };
 
-type RestApi = ReturnType<typeof Octokit>["prototype"]["rest"];
+type RestApi = InstanceType<typeof Octokit>["rest"];
 
 function readEnv(): GitHubBotEnv {
     const botUserName = process.env.BOT_USERNAME;

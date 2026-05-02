@@ -13,6 +13,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "build:action": "rm -rf dist && ncc build src/action.ts -o dist --source-map --minify --target es2022 && find dist -name '*.d.ts' -delete && find dist -type d -empty -delete",
     "start": "probot run ./lib/index.js",
     "test": "jest",
     "sync": "node ./lib/sync.js $user $repo",
@@ -33,6 +34,7 @@
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^25.6.0",
+    "@vercel/ncc": "^0.38.4",
     "jest": "^30.3.0",
     "nock": "^14.0.14",
     "smee-client": "^5.0.0",

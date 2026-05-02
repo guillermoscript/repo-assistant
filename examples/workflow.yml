@@ -1,0 +1,47 @@
+# Save this as `.github/workflows/repo-assistant.yml` in the repo where you want
+# the bot to run. Set the three required secrets in
+# Settings → Secrets and variables → Actions:
+#   - OPENAI_API_KEY  (or any OpenAI-compatible gateway key)
+#   - SUPABASE_URL
+#   - SUPABASE_KEY    (service-role key)
+name: repo-assistant
+
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+  # Auto-close sweep — runs every 6 hours over open `duplicate` /
+  # `possible-duplicate` issues. Remove this trigger if you don't want auto-close.
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  triage:
+    if: github.event_name == 'issues' || github.event_name == 'issue_comment'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: guillermoscript/repo-assistant@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-key: ${{ secrets.SUPABASE_KEY }}
+
+  auto-close:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: guillermoscript/repo-assistant@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-key: ${{ secrets.SUPABASE_KEY }}
+          mode: auto-close
+          # Flip this to 'true' once you've watched a few dry-run cycles.
+          auto-close-enabled: "false"
+          auto-close-dry-run: "true"
