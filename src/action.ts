@@ -93,7 +93,10 @@ async function main() {
 main().then(
     () => process.exit(0),
     (err) => {
-        log.error("Fatal:", err);
+        // Error instances don't serialize via JSON.stringify — print message + stack directly.
+        const e = err as Error;
+        console.error(`Fatal: ${e?.message ?? err}`);
+        if (e?.stack) console.error(e.stack);
         process.exit(1);
     },
 );
