@@ -1,5 +1,7 @@
 // MUST be first — forwards INPUT_* env vars before config.ts snapshots them.
-import "./applyInputs";
+// We reference `inputsApplied` so webpack/ncc can't tree-shake the side effect.
+import { inputsApplied } from "./applyInputs";
+void inputsApplied;
 
 import * as fs from "node:fs";
 import { Octokit } from "octokit";

@@ -1,6 +1,7 @@
 // Forward GitHub Actions INPUT_<NAME> env vars to the names the rest of the
-// codebase reads. MUST be the first import in src/action.ts so it runs before
-// modules that snapshot env at import time (e.g. config.ts).
+// codebase reads. MUST run before modules that snapshot env at import time
+// (e.g. config.ts). See action.ts — it requires this module *and* references
+// the export below so webpack/ncc can't tree-shake the side effect away.
 const map: Record<string, string> = {
     INPUT_OPENAI_API_KEY: "OPENAI_API_KEY",
     INPUT_DATABASE_URL: "DATABASE_URL",
@@ -12,7 +13,13 @@ const map: Record<string, string> = {
     INPUT_AUTO_CLOSE_DRY_RUN: "AUTO_CLOSE_DRY_RUN",
 };
 
+let forwarded = 0;
 for (const [src, dst] of Object.entries(map)) {
     const v = process.env[src];
-    if (v && !process.env[dst]) process.env[dst] = v;
+    if (v && !process.env[dst]) {
+        process.env[dst] = v;
+        forwarded++;
+    }
 }
+
+export const inputsApplied = forwarded;
