@@ -2,7 +2,7 @@
 // function instead of a top-level script. Used by src/action.ts (auto-close mode).
 import { Octokit } from "octokit";
 import { autoCloseConfig } from "./config";
-import { supabaseClient } from "./utils/supabase";
+import { getStoredEmbedding, matchDocuments } from "./utils/supabase";
 import { judgeDuplicate, type Candidate } from "./duplicateJudge";
 
 type Octo = ReturnType<typeof makeOctokit>;
@@ -144,27 +144,17 @@ async function decide(
 }
 
 async function fetchCandidatesFromSupabase(issueNumber: number): Promise<Candidate[]> {
-    const { data: rows, error } = await supabaseClient
-        .from("documents")
-        .select("repo_id, embedding")
-        .eq("issue_number", issueNumber)
-        .limit(1);
+    const stored = await getStoredEmbedding(issueNumber);
+    if (!stored) return [];
 
-    if (error || !rows || rows.length === 0) return [];
-
-    const row = rows[0] as { repo_id: number; embedding: number[] | string };
-    const embedding = typeof row.embedding === "string" ? JSON.parse(row.embedding) : row.embedding;
-
-    const { data: matches, error: matchErr } = await supabaseClient.rpc("match_documents", {
-        query_embedding: embedding,
-        filter_repo_id: row.repo_id,
-        match_count: 5,
-        match_threshold: 0.65,
+    const matches = await matchDocuments({
+        queryEmbedding: stored.embedding,
+        filterRepoId: stored.repo_id,
+        matchCount: 5,
+        matchThreshold: 0.65,
     });
 
-    if (matchErr || !matches) return [];
-
-    return (matches as any[])
+    return matches
         .filter((m) => m.issue_number !== issueNumber)
         .map((m) => ({
             issue_number: m.issue_number,

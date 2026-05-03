@@ -3,8 +3,7 @@
 // modules that snapshot env at import time (e.g. config.ts).
 const map: Record<string, string> = {
     INPUT_OPENAI_API_KEY: "OPENAI_API_KEY",
-    INPUT_SUPABASE_URL: "SUPABASE_URL",
-    INPUT_SUPABASE_KEY: "SUPABASE_ANON_KEY",
+    INPUT_DATABASE_URL: "DATABASE_URL",
     INPUT_MODE: "ACTION_MODE",
     INPUT_BOT_USERNAME: "BOT_USERNAME",
     INPUT_CHAT_SDK_ENABLED: "CHAT_SDK_ENABLED",

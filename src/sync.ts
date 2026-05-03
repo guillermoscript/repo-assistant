@@ -1,7 +1,7 @@
 
 require("dotenv").config();
 import { Octokit } from "octokit";
-import { supabaseClient } from "./utils/supabase";
+import { findDocumentByIssue } from "./utils/supabase";
 import { createEmbeddingsAndSaveToDatabase } from "./insert";
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -48,38 +48,27 @@ async function fetchAndStoreOpenIssues(owner: string, repo: string) {
     console.log(`Fetched ${issuesToProcess.length} issues in total.`)
     // Process and store issues
     for (const issue of issuesToProcess) {
-        // Check if issue already exists in the database
-        const { data, error } = await supabaseClient
-            .from('documents')
-            .select('id')
-            .eq('issue_id', issue.id)
-            .eq('issue_number', issue.number)
-            .eq('repo_id', repoId)
-            .single();
+        const existing = await findDocumentByIssue(repoId, issue.id, issue.number);
 
-        // if issue is not in the database, create it
-        if (error && error.code === 'PGRST116') {
-            
-            const issueId = issue.id;
-            const issueNumber = issue.number;
-
-            const isSaved = await createEmbeddingsAndSaveToDatabase(issue.title + " " + issue?.body, repoId, issueId, issueNumber)
-
-            if (!isSaved) {
-                console.error(`Error storing issue ${issue.number} in the database.`);
-            } else {
-                console.log(`Issue ${issue.number} stored successfully.`);
-            }
-
-            sleep(2000); // Wait 2 seconds to respect OpenAI API rate limits
-        }
-
-        // If the issue already exists, skip to the next one
-        if (data) {
+        if (existing) {
             console.log(`Issue ${issue.number} already exists in the database.`);
             continue;
         }
 
+        const result = await createEmbeddingsAndSaveToDatabase(
+            issue.title + " " + issue?.body,
+            repoId,
+            issue.id,
+            issue.number,
+        );
+
+        if (!result.saved) {
+            console.error(`Error storing issue ${issue.number} in the database.`);
+        } else {
+            console.log(`Issue ${issue.number} stored successfully.`);
+        }
+
+        await sleep(2000);
     }
 
     console.log('Sync process completed successfully.');

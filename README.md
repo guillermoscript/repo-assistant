@@ -4,7 +4,7 @@
 
 When someone opens an issue, the bot:
 
-1. **Embeds** the title + body and stores it in your Supabase.
+1. **Embeds** the title + body and stores it in your Postgres (Neon, Supabase, or any pgvector DB).
 2. **Searches** existing issues via cosine similarity (HNSW index, ≥ 0.65 floor).
 3. **An LLM judges** the top candidates and emits a 0-100 confidence score:
    - **≥ 90** → `duplicate` label + comment linking the original
@@ -35,19 +35,23 @@ Browse [all `duplicate`-labeled issues](https://github.com/guillermoscript/repo-
 
 The fastest path: install as a **GitHub Action**. No server, no hosting — just a workflow file.
 
-### Step 1 — Set up Supabase
+### Step 1 — Set up a Postgres + pgvector database
 
-Sign up at [supabase.com](https://supabase.com) (free tier handles ~10k issues comfortably). In the SQL editor, paste the contents of [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) and run it. Grab your **Project URL** and **service-role key** from Settings → API.
+Easiest: [**Neon**](https://console.neon.tech) free tier — 1 connection string, doesn't pause, scale-to-zero, and includes pgvector.
 
-### Step 2 — Add 3 secrets to your repo
+1. Sign up → create project → copy the **connection string** (looks like `postgresql://user:pass@ep-xxx.neon.tech/neondb?sslmode=require`).
+2. Open the **SQL Editor** and paste the contents of [`db/schema.sql`](db/schema.sql), then run it. This creates the `documents` table, the `match_documents` function, and an HNSW index.
+
+Supabase, Render Postgres, RDS, or self-hosted also work — anywhere you can install pgvector ≥ 0.8.
+
+### Step 2 — Add 2 secrets to your repo
 
 Settings → Secrets and variables → Actions → New repository secret:
 
 | Name | Value |
 |---|---|
 | `OPENAI_API_KEY` | Your OpenAI key (or any OpenAI-compatible gateway key) |
-| `SUPABASE_URL` | `https://xxx.supabase.co` |
-| `SUPABASE_KEY` | The Supabase **service-role** key (not the anon key) |
+| `DATABASE_URL` | Your Postgres connection string from Step 1 |
 
 ### Step 3 — Drop in the workflow
 
@@ -68,15 +72,14 @@ jobs:
       - uses: guillermoscript/repo-assistant@v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          supabase-url: ${{ secrets.SUPABASE_URL }}
-          supabase-key: ${{ secrets.SUPABASE_KEY }}
+          database-url: ${{ secrets.DATABASE_URL }}
 ```
 
 Commit, open a test issue, and you should see a comment from `github-actions[bot]` within 30s.
 
 ### Privacy
 
-Your data stays yours. Issue text + embeddings live in **your** Supabase. AI calls go to **your** OpenAI key. There is no shared backend, and the maintainers of this repo can't see your data.
+Your data stays yours. Issue text + embeddings live in **your** Postgres. AI calls go to **your** OpenAI key. There is no shared backend, and the maintainers of this repo can't see your data.
 
 ### Prefer a long-lived service?
 
@@ -117,7 +120,7 @@ v2 used a hard cosine threshold of 0.8 to gate duplicate detection. Paraphrases 
 
 ## Sample run
 
-Synthetic issues filed via `gh issue create` against this repo with a fresh Supabase. v4 outputs include a numeric confidence percentage from the LLM judge (0-100). Earlier runs (v3) are documented in [`test/v2-quality-report.md`](test/v2-quality-report.md).
+Synthetic issues filed via `gh issue create` against this repo with a fresh DB. v4 outputs include a numeric confidence percentage from the LLM judge (0-100). Earlier runs (v3) are documented in [`test/v2-quality-report.md`](test/v2-quality-report.md).
 
 | Test | Title | Bot's labels | Confidence | Bot's comment (truncated) |
 |---|---|---|---|---|
@@ -138,7 +141,7 @@ Synthetic issues filed via `gh issue create` against this repo with a fresh Supa
 ```
 GitHub webhook ──► Probot ──► src/index.ts
                                   │
-                                  ├─► embed text ──► Supabase: insert documents
+                                  ├─► embed text ──► Postgres: insert documents
                                   │
                                   ├─► match_documents RPC (HNSW + filter, threshold 0.65)
                                   │       │
@@ -188,7 +191,7 @@ Key choices:
 - [Gallery](#gallery)
 - [Contributing](#contributing)
 - [License](#license)
-- [Setting Up Supabase](#setting-up-supabase)
+- [Setting Up Postgres](#setting-up-postgres)
 - [Setting Up OpenAI](#setting-up-openai)
 - [Deploying the App](#deploying-the-app)
 
@@ -219,9 +222,9 @@ Those are the main features that I can think of right now. If you have any other
 Before you start, make sure you have:
 
 - A GitHub account
-- A Supabase account
+- A Postgres + pgvector database (Neon free tier recommended)
 - An OpenAI account
-- node v18 or higher
+- node v20 or higher
 
 ### Installation
 
@@ -259,15 +262,14 @@ if you want to sync existing issues, you can run the following command:
 npm run sync --user=<username> --repo=<repo>
 ```
 
-Make sure to have the `.env` file set up with Supabase, OpenAI, and GitHub tokens before running the command.
+Make sure to have the `.env` file set up with Postgres, OpenAI, and GitHub tokens before running the command.
 
 ### Configuration
 
 1. Create a `.env` file in the root directory of your project and fill in your API keys and other environment variables:
     ```env
-    # Supabase
-    SUPABASE_URL=your-supabase-url
-    SUPABASE_ANON_KEY=your-supabase-key
+    # Postgres (Neon, Supabase, or any pgvector ≥0.8)
+    DATABASE_URL=postgresql://user:pass@host/db?sslmode=require
 
     # OpenAI
     OPENAI_API_KEY=your-openai-api-key
@@ -278,7 +280,7 @@ Make sure to have the `.env` file set up with Supabase, OpenAI, and GitHub token
     PRIVATE_KEY=your-pem-value
     ```
 
-2. Set up your Supabase database by following the instructions in the [Setting Up Supabase](#setting-up-supabase) section below.
+2. Set up your Postgres database by following the instructions in the [Setting Up Postgres](#setting-up-postgres) section below.
 
 3. Set up your OpenAI API key by following the instructions in the [Setting Up OpenAI](#setting-up-openai) section below.
 
@@ -314,7 +316,7 @@ To synchronize existing issues, you'll need a GitHub token with repository acces
     npm run sync --user=<username> --repo=<repo>
     ```
 
-Make sure to have the `.env` file set up with Supabase, OpenAI, and GitHub tokens before running the command.
+Make sure to have the `.env` file set up with Postgres, OpenAI, and GitHub tokens before running the command.
 
 ## Auto-Closer
 
@@ -335,7 +337,7 @@ The job (`src/autoClose.ts`, run as a GitHub Actions cron every 6 hours) scans b
    - A 👎 or 😕 reaction is on the bot's comment.
 4. Then dispatch by label:
    - **`duplicate`**: post a closing comment and close the issue with `state_reason: not_planned`.
-   - **`possible-duplicate`**: re-fetch the candidate issues from Supabase and re-run the LLM judge with the same `judgeDuplicate` helper used at issue creation. Then:
+   - **`possible-duplicate`**: re-fetch the candidate issues from Postgres and re-run the LLM judge with the same `judgeDuplicate` helper used at issue creation. Then:
      - Confidence ≥ 90 → promote `possible-duplicate` → `duplicate` and close (with the new confidence + reasoning in the comment).
      - Confidence < 50 → remove the `possible-duplicate` label (false alarm), leave the issue open.
      - 50–89 → still uncertain, leave the label and let the next run try again.
@@ -396,11 +398,11 @@ GITHUB_TOKEN=ghp_...                      # PAT with repo scope, used by adapter
 
 Also: in your GitHub App settings, subscribe the App to **Issue comment** events. The repo's `app.yml` manifest already lists it but the live App settings have to be updated separately.
 
-State (subscriptions, distributed locks, dedupe) lives in Postgres under the `repo_assistant_chat_sdk:*` key prefix. Same Supabase Postgres as `documents`; isolated by prefix, no schema migration needed (state-pg auto-creates its tables).
+State (subscriptions, distributed locks, dedupe) lives in Postgres under the `repo_assistant_chat_sdk:*` key prefix. Same Postgres as `documents`; isolated by prefix, no schema migration needed (state-pg auto-creates its tables).
 
 ## Quality Evaluation
 
-A 13-scenario evaluation was run against this repo with a fresh local Supabase. The bot scored **13/13 (100%)** in the latest run (v3, two-stage retrieval). See [`test/v2-quality-report.md`](test/v2-quality-report.md) for all three runs (v2 baseline, v2 post-RAG-fixes, v3 post-LLM-judge), per-scenario breakdowns, and how each gap was closed.
+A 13-scenario evaluation was run against this repo with a fresh local Postgres. The bot scored **13/13 (100%)** in the latest run (v3, two-stage retrieval). See [`test/v2-quality-report.md`](test/v2-quality-report.md) for all three runs (v2 baseline, v2 post-RAG-fixes, v3 post-LLM-judge), per-scenario breakdowns, and how each gap was closed.
 
 Headline (v3):
 
@@ -427,33 +429,25 @@ Got ideas on how to make Repo Assistant AI even better? Want to report a bug? Fe
 Repo Assistant AI is open source software [licensed as ISC](LICENSE) © 2024 guillermoscript.
 
 
-## Setting Up Supabase
+## Setting Up Postgres
 
-The schema lives in `supabase/migrations/` as proper migration files. You can run Supabase **locally** (recommended for development) or against the **hosted** service.
+The bot needs a Postgres database with the [pgvector](https://github.com/pgvector/pgvector) extension (≥0.8 — the `match_documents` function uses iterative HNSW scan). The bootstrap SQL is at [`db/schema.sql`](db/schema.sql).
 
-### Local Supabase (recommended for dev)
+### Neon (recommended)
 
-Requires the [Supabase CLI](https://supabase.com/docs/guides/cli) and Docker.
+[Neon](https://console.neon.tech) free tier: 0.5 GB / project, 20 projects, scale-to-zero, doesn't pause. Single connection string, HTTP-friendly driver — perfect for short-lived GitHub Action runs.
 
-```sh
-supabase start
-```
+1. Create a project.
+2. Open the **SQL Editor**, paste [`db/schema.sql`](db/schema.sql), and run it.
+3. Copy the **connection string** from the dashboard into `DATABASE_URL`.
 
-This boots Postgres + pgvector + the REST API + Studio. The migrations under `supabase/migrations/` run automatically and create the `documents` table, the `match_documents` RPC, the **HNSW** cosine index on `embedding`, and the btree index on `repo_id`.
+### Supabase
 
-Get the credentials with:
+If you already use Supabase: the legacy migration files live in `supabase/migrations/`. Either apply those or run `db/schema.sql` directly. Set `DATABASE_URL` to your **Postgres connection string** (Project Settings → Database → Connection string), not the REST URL.
 
-```sh
-supabase status -o env
-```
+### Self-hosted / RDS / Render
 
-Copy `API_URL` to `SUPABASE_URL` and `ANON_KEY` to `SUPABASE_ANON_KEY` in your `.env`. If you run the bot **inside Docker** you'll need `http://host.docker.internal:54321` instead of `127.0.0.1`.
-
-### Hosted Supabase
-
-1. Create a project at [supabase.com](https://supabase.com).
-2. Apply the migrations from `supabase/migrations/` via the SQL editor or `supabase db push`.
-3. Copy `Project URL` to `SUPABASE_URL` and the `anon` key to `SUPABASE_ANON_KEY`.
+Any Postgres ≥ 15 with `CREATE EXTENSION vector` available works. Run `db/schema.sql` once, set `DATABASE_URL`, done.
 
 ## Setting Up OpenAI
 

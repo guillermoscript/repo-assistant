@@ -1,6 +1,6 @@
 import { embedMany } from "ai";
 import { embeddingModel } from "./utils/aiProvider";
-import { supabaseClient } from "./utils/supabase";
+import { insertDocuments } from "./utils/supabase";
 
 const MAX_TOKENS = 4000;
 
@@ -55,12 +55,7 @@ export const createEmbeddingsAndSaveToDatabase = async (
             issue_number: issueNumber,
         }));
 
-        const { error } = await supabaseClient.from('documents').insert(rows);
-
-        if (error) {
-            console.error('Error inserting data into Supabase:', error);
-            return { saved: false, embedding: null };
-        }
+        await insertDocuments(rows);
 
         return { saved: true, embedding: embeddings[0] };
     } catch (error) {

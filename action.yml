@@ -9,11 +9,8 @@ inputs:
   openai-api-key:
     description: "OpenAI API key (used for chat + embedding models). The Vercel AI Gateway is supported transparently if you point OPENAI_BASE_URL at it."
     required: true
-  supabase-url:
-    description: "Supabase project URL (https://xxx.supabase.co)."
-    required: true
-  supabase-key:
-    description: "Supabase service-role key (needs read+write to the documents table)."
+  database-url:
+    description: "Postgres connection string with pgvector ≥0.8 (e.g. Neon, Supabase, or self-hosted). See db/schema.sql for the bootstrap SQL to run once on a fresh DB."
     required: true
   mode:
     description: "Run mode: 'event' (default; reacts to the triggering issue/comment) or 'auto-close' (sweeps duplicate-labeled issues for closure). Match this to the workflow trigger."

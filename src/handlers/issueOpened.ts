@@ -4,19 +4,10 @@ import type { Octokit } from "octokit";
 import { createEmbeddingsAndSaveToDatabase } from "../insert";
 import { behaviorConfig } from "../config";
 import { chatModel, embeddingModel } from "../utils/aiProvider";
-import { supabaseClient } from "../utils/supabase";
+import { matchDocuments } from "../utils/supabase";
 import { judgeDuplicate } from "../duplicateJudge";
 
 type RestApi = InstanceType<typeof Octokit>["rest"];
-
-type MatchRow = {
-    id: number;
-    content: string;
-    issue_id: number;
-    issue_number: number;
-    repo_id: number;
-    similarity: number;
-};
 
 const DUPLICATE_CONFIDENT = 90;
 const DUPLICATE_POSSIBLE = 50;
@@ -142,15 +133,16 @@ export async function handleIssueOpened(
         queryEmbedding = embedding;
     }
 
-    const { data, error } = await supabaseClient.rpc("match_documents", {
-        query_embedding: queryEmbedding,
-        filter_repo_id: repoId,
-        match_count: behaviorConfig.candidateCount,
-        match_threshold: behaviorConfig.candidateThreshold,
-    });
-
-    if (error) {
-        log.error({ err: error }, "match_documents rpc failed");
+    let allMatches;
+    try {
+        allMatches = await matchDocuments({
+            queryEmbedding,
+            filterRepoId: repoId,
+            matchCount: behaviorConfig.candidateCount,
+            matchThreshold: behaviorConfig.candidateThreshold,
+        });
+    } catch (err) {
+        log.error({ err: (err as Error).message }, "match_documents query failed");
         await createComment(
             octokit,
             owner,
@@ -161,7 +153,7 @@ export async function handleIssueOpened(
         return;
     }
 
-    const matches = (data as MatchRow[]).filter((m) => m.issue_id !== issueId);
+    const matches = allMatches.filter((m) => m.issue_id !== issueId);
 
     if (matches.length > 0) {
         const judgment = await judgeDuplicate(

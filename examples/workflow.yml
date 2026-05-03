@@ -1,9 +1,8 @@
 # Save this as `.github/workflows/repo-assistant.yml` in the repo where you want
-# the bot to run. Set the three required secrets in
+# the bot to run. Set the two required secrets in
 # Settings → Secrets and variables → Actions:
-#   - OPENAI_API_KEY  (or any OpenAI-compatible gateway key)
-#   - SUPABASE_URL
-#   - SUPABASE_KEY    (service-role key)
+#   - OPENAI_API_KEY   (or any OpenAI-compatible gateway key)
+#   - DATABASE_URL     (Postgres + pgvector — Neon recommended, see README)
 name: repo-assistant
 
 on:
@@ -29,8 +28,7 @@ jobs:
       - uses: guillermoscript/repo-assistant@v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          supabase-url: ${{ secrets.SUPABASE_URL }}
-          supabase-key: ${{ secrets.SUPABASE_KEY }}
+          database-url: ${{ secrets.DATABASE_URL }}
 
   auto-close:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -39,8 +37,7 @@ jobs:
       - uses: guillermoscript/repo-assistant@v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          supabase-url: ${{ secrets.SUPABASE_URL }}
-          supabase-key: ${{ secrets.SUPABASE_KEY }}
+          database-url: ${{ secrets.DATABASE_URL }}
           mode: auto-close
           # Flip this to 'true' once you've watched a few dry-run cycles.
           auto-close-enabled: "false"
