@@ -22,4 +22,8 @@ for (const [src, dst] of Object.entries(map)) {
     }
 }
 
+// One-line debug so failures in CI tell us which inputs landed.
+const inputKeys = Object.keys(process.env).filter((k) => k.startsWith("INPUT_"));
+console.log(`[applyInputs] forwarded=${forwarded} INPUT_* keys=${inputKeys.join(",")}`);
+
 export const inputsApplied = forwarded;
