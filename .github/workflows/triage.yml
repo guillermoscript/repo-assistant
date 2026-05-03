@@ -1,0 +1,24 @@
+# Self-test of the repo-assistant Action — triage path.
+# Reacts to new issues and issue comments, dogfooding the local checkout
+# (`uses: ./`) so this exercises the current commit's bundle.
+name: Triage issues
+
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          database-url: ${{ secrets.DATABASE_URL }}
